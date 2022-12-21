@@ -3,6 +3,7 @@ import reactLogo from "./assets/react.svg";
 import Header from "./components/Header";
 
 import { useSerial } from "./contexts/Serial.context";
+import { Container, Paper, Stack } from "@mantine/core";
 
 function App() {
   const {
@@ -25,14 +26,14 @@ function App() {
   });
 
   return (
-    <div className="App">
+    <Stack className="App">
       <Header
         links={[
           { link: "one", label: "one" },
           { link: "two", label: "two" },
         ]}
       />
-      <div>
+      <Paper shadow="sm" p="md" withBorder>
         <h2>Device Info</h2>
         <p>{canUseSerial ? "Can use serial" : "Cannot use serial"}</p>
         <p>
@@ -43,10 +44,13 @@ function App() {
         <p>Port state: {portState}</p>
         <button onClick={connect}>Connect</button>
         <button onClick={disconnect}>Disconnect</button>
-      </div>
-
-      <p>{message.value}</p>
-    </div>
+      </Paper>
+      <Paper shadow="sm" p="md" withBorder>
+        <h1>Serial Data</h1>
+        <p>{message.value}</p>
+        <p>{message.timestamp}</p>
+      </Paper>
+    </Stack>
   );
 }
 
