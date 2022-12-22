@@ -6,170 +6,168 @@ import {
   useRef,
   useState,
 } from "react";
-
-export type PortState = "closed" | "closing" | "open" | "opening";
+import Serial from "../utils/Serial";
 
 export interface SerialContextValue {
-  canUseSerial: boolean;
-  portState: PortState;
-  ports: SerialPort[];
-  requestPort(): Promise<SerialPort | null>;
-  connect(port: SerialPort): Promise<boolean>;
-  disconnect(): void;
-  readStart(): Promise<void>;
-  readStop(): Promise<void>;
+  connected: boolean;
+  connect(): void;
+  received: {
+    timestamp: Date;
+    value: string;
+  };
+  handleSend: (value: string) => void;
+  close: () => void;
+  history: SerialRxSchema[];
 }
 
 export const SerialContext = createContext<SerialContextValue>({
-  canUseSerial: false,
-  portState: "closed",
-  ports: [],
-  requestPort: () => Promise.resolve(null),
-  connect: () => Promise.resolve(false),
-  disconnect: () => {},
-  readStart: () => Promise.resolve(),
-  readStop: () => Promise.resolve(),
+  connected: false,
+  connect: () => {},
+  received: {
+    timestamp: new Date(),
+    value: "",
+  },
+  handleSend: (value: string) => {},
+  close: () => {},
+  history: [],
 });
 
 export const useSerial = () => useContext(SerialContext);
 
+interface SerialRxSchema {
+  timestamp: Date;
+  value: string;
+}
+
+type LineEnding = "none" | "\\r\\n" | "\\r" | "\\n";
+
+const loadSettings = () => {
+  let settings = {
+    baudRate: 115200,
+    msgStart: "#",
+    msgEnd: "@",
+    lineEnding: "\\n" as LineEnding,
+    echoFlag: true,
+    timeFlag: false,
+    ctrlFlag: true,
+  };
+  return settings;
+};
+
 export default function SerialProvider(props: { children: React.ReactNode }) {
-  const [canUseSerial] = useState(() => "serial" in navigator);
-  const [portState, setPortState] = useState<PortState>("closed");
+  const [serial] = useState(new Serial());
+  const [connected, setConnected] = useState(false);
 
-  const [ports, setPorts] = useState<SerialPort[]>([]);
+  // History data
+  const [history, setHistory] = useState<SerialRxSchema[]>([]);
+  // Receive Buffer
+  const [received, setReceived] = useState({
+    timestamp: new Date(),
+    value: "",
+  });
+  // Temp Buffer for reciving un-complete data
+  const tempBuffer = useRef<string | null>(null);
 
-  const portRef = useRef<SerialPort | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader | null>(null);
-
-  const requestPort = async () => {
-    console.log("Requesting port...");
-    try {
-      const port = await navigator.serial.requestPort({
-        filters: [
-          // { vendorId: 0x0483, productId: 0x5740 }
-        ],
-      });
-      console.log("Port opened", port);
-      return port;
-    } catch (error) {
-      console.error("Error requesting port", error);
-      return null;
-    }
-  };
-
-  const getPorts = async () => {
-    try {
-      const ports = await navigator.serial.getPorts();
-      console.log("Ports", ports);
-      setPorts(ports);
-    } catch (error) {
-      console.error("Error getting ports", error);
-    }
-  };
-
-  const connect = async (port: SerialPort) => {
-    console.log("Connecting to port", port);
-    try {
-      await port.open({
-        baudRate: 115200,
-        dataBits: 8,
-        stopBits: 1,
-        parity: "none",
-        flowControl: "hardware",
-      });
-      console.log("Port opened", port);
-      setPortState("open");
-      portRef.current = port;
-      return true;
-    } catch (error) {
-      console.error("Error opening port", error);
-      return false;
-    }
-  };
-
-  const disconnect = async () => {
-    console.log("Disconnecting from port", portRef.current);
-    try {
-      await portRef.current?.close();
-      console.log("Port closed", portRef.current);
-      setPortState("closed");
-      portRef.current = null;
-    } catch (error) {
-      console.error("Error closing port", error);
-    }
-  };
+  // Settings
+  const [settings, setSettings] = useState(loadSettings());
 
   useEffect(() => {
-    getPorts();
+    setHistory((current) => current.concat(received));
+  }, [received]);
 
-    navigator.serial.addEventListener("connect", (event) => {
-      console.log("Port connected", event);
-      getPorts();
-    });
-    navigator.serial.addEventListener("disconnect", (event) => {
-      console.log("Port disconnected", event);
-      getPorts();
-    });
-  }, []);
+  const recieveHandler = (value: string) => {
+    const { msgStart, msgEnd } = settings;
 
-  const readStart = async () => {
-    const textDecoder = new TextDecoderStream();
-    const readableStreamClosed = portRef.current?.readable.pipeTo(
-      textDecoder.writable
-    );
-    const reader = portRef.current?.readable.getReader();
+    if (value.slice(0, 1) !== msgStart || value.slice(-1) !== msgEnd) {
+      console.log("Un-complete data");
+      tempBuffer.current = value;
+    } else {
+      console.log("Complete data");
+      setReceived({
+        timestamp: new Date(),
+        value: `${value}`,
+      });
+    }
+  };
 
-    try {
-      if (!reader) {
-        throw new Error("No reader");
-      }
-
-      readerRef.current = reader;
-      while (portRef.current?.readable) {
-        const { value, done } = await reader.read();
-
-        if (done) {
-          console.log("Done reading");
-          break;
-        }
-        if (value) {
-          const timestamp = Date.now();
-
-          const data = new TextDecoder().decode(value);
-          //console.log("Read value", data);
-          console.log("Read value", value);
-        }
-      }
-    } catch (error) {
-      console.error("Error reading port", error);
-    } finally {
-      readerRef.current?.releaseLock();
-      readerRef.current = null;
+  const connect = () => {
+    if (!serial.supported()) {
+      console.error(`Serial not supported`);
+      return;
     }
 
-    await readableStreamClosed?.catch((error) => {
-      console.error("Error reading stream", error);
+    serial.onSuccess = () => {
+      setConnected(true);
+      console.log("Connected");
+    };
+
+    serial.onFail = () => {
+      setConnected(false);
+      console.log("Failed to connect");
+    };
+
+    serial.onReceive = (value) => {
+      recieveHandler(value);
+      return;
+
+      if (value.slice(-1) !== "@") {
+        console.log("Un-complete data writted to temp buffer");
+        tempBuffer.current = value;
+      } else if (tempBuffer.current !== null && value.slice(-1) === "@") {
+        console.log("Complete data but temp buffer not empty");
+        setReceived({
+          timestamp: new Date(),
+          value: `${tempBuffer.current}${value}`,
+        });
+        tempBuffer.current = null;
+      } else if (tempBuffer.current !== null && value.slice(-1) !== "@") {
+        console.log(
+          "Un-complete data&&tempBuffer contains data writted to tempbuffer"
+        );
+        tempBuffer.current = `${tempBuffer.current}${value}`;
+      } else {
+        console.log("tempBuffer", tempBuffer.current);
+        console.log("Complete data");
+        setReceived({
+          timestamp: new Date(),
+          value: `${value}`,
+        });
+      }
+    };
+
+    serial.requestPort().then((res) => {
+      if (res !== "") {
+        console.error(res);
+      }
     });
   };
 
-  const readStop = async () => {
-    readerRef.current?.cancel();
-    readerRef.current = null;
+  const handleSend = (str: string) => {
+    const map = {
+      none: "",
+      "\\r": "\r",
+      "\\n": "\n",
+      "\\r\\n": "\r\n",
+    };
+
+    serial.send(`${str}${map[settings.lineEnding]}`);
+  };
+
+  const close = () => {
+    serial.close();
+    setConnected(false);
   };
 
   return (
     <>
       <SerialContext.Provider
         value={{
-          canUseSerial,
-          portState,
-          ports,
-          requestPort,
+          connected,
           connect,
-          disconnect,
-          readStart,
-          readStop,
+          received,
+          handleSend,
+          close,
+          history,
         }}
       >
         {props.children}

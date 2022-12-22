@@ -112,6 +112,7 @@ export default class Serial {
       try {
         while (true && this.open) {
           const { value, done } = await this.reader.read();
+          console.log(value);
           if (done) {
             // |reader| has been canceled.
             break;

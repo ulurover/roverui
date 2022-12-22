@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 
 import { Button, Card, Group, Stack, Text } from "@mantine/core";
-import { useSerial } from "../contexts/Serial.context";
+import { useSerial } from "../contexts/SerialOld.context";
 
 export default function PortCard(props: { port: SerialPort }) {
   const SerialPort = props.port;
