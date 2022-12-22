@@ -6,6 +6,7 @@ import {
   Group,
   Burger,
   Text,
+  SegmentedControl,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 
@@ -62,14 +63,27 @@ const useStyles = createStyles((theme) => ({
   },
 }));
 
-interface HeaderSimpleProps {
+interface HeaderProps {
   links: { link: string; label: string }[];
+  mode: {
+    communicationMode: string;
+    setCommunicationMode: React.Dispatch<
+      React.SetStateAction<"serial" | "webusb">
+    >;
+  };
 }
 
-export default function Header({ links }: HeaderSimpleProps) {
+export default function Header({ links, mode }: HeaderProps) {
   const [opened, { toggle }] = useDisclosure(false);
   const [active, setActive] = useState(links[0].link);
   const { classes, cx } = useStyles();
+  const { communicationMode, setCommunicationMode } = mode;
+
+  const changeMode = (value: string) => {
+    if (value === "serial" || value === "webusb") {
+      setCommunicationMode(value);
+    }
+  };
 
   const items = links.map((link) => (
     <a
@@ -91,6 +105,15 @@ export default function Header({ links }: HeaderSimpleProps) {
     <HeaderMantine height={60} mb={120}>
       <Container className={classes.header}>
         <Text>Ulurover UI</Text>
+        <SegmentedControl
+          value={communicationMode}
+          onChange={changeMode}
+          data={[
+            { label: "WebSerial API", value: "serial" },
+            { label: "WebUSB API", value: "webusb" },
+          ]}
+        />
+
         <Group spacing={5} className={classes.links}>
           {items}
         </Group>

@@ -3,54 +3,38 @@ import reactLogo from "./assets/react.svg";
 import Header from "./components/Header";
 
 import { useSerial } from "./contexts/Serial.context";
-import { Container, Paper, Stack } from "@mantine/core";
+import { Container, Grid, Group, Paper, Stack } from "@mantine/core";
+import { useUsb } from "./contexts/Usb.context";
+import Serial from "./components/Serial";
+import Webusb from "./components/Webusb";
 
 function App() {
-  const {
-    canUseSerial,
-    hasTriedAutoconnect,
-    subscribe,
-    portState,
-    connect,
-    disconnect,
-  } = useSerial();
-
-  const [message, setMessage] = useState({
-    value: "",
-    timestamp: 0,
-  });
-
-  subscribe((message) => {
-    setMessage(message);
-    console.log(message);
-  });
+  const [communicationMode, setCommunicationMode] = useState<
+    "serial" | "webusb"
+  >("serial");
 
   return (
-    <Stack className="App">
+    <div className="App">
       <Header
+        mode={{ communicationMode, setCommunicationMode }}
         links={[
           { link: "one", label: "one" },
           { link: "two", label: "two" },
         ]}
       />
-      <Paper shadow="sm" p="md" withBorder>
-        <h2>Device Info</h2>
-        <p>{canUseSerial ? "Can use serial" : "Cannot use serial"}</p>
-        <p>
-          {hasTriedAutoconnect
-            ? "Has tried autoconnect"
-            : "Has not tried autoconnect"}
-        </p>
-        <p>Port state: {portState}</p>
-        <button onClick={connect}>Connect</button>
-        <button onClick={disconnect}>Disconnect</button>
-      </Paper>
-      <Paper shadow="sm" p="md" withBorder>
-        <h1>Serial Data</h1>
-        <p>{message.value}</p>
-        <p>{message.timestamp}</p>
-      </Paper>
-    </Stack>
+
+      <div style={{ width: "100%" }}>
+        {communicationMode === "webusb" ? <Webusb /> : <Serial />}
+      </div>
+      {/* <Grid>
+        <Grid.Col span={6}>
+          <Serial />
+        </Grid.Col>
+        <Grid.Col span={6}>
+          <Webusb />
+        </Grid.Col>
+      </Grid> */}
+    </div>
   );
 }
 

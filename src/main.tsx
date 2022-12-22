@@ -5,6 +5,7 @@ import "./index.css";
 
 import { MantineProvider } from "@mantine/core";
 import SerialProvider from "./contexts/Serial.context";
+import UsbProvider from "./contexts/Usb.context";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <MantineProvider
@@ -12,8 +13,10 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     withNormalizeCSS
     theme={{ colorScheme: "dark" }}
   >
-    <SerialProvider>
-      <App />
-    </SerialProvider>
+    <UsbProvider>
+      <SerialProvider>
+        <App />
+      </SerialProvider>
+    </UsbProvider>
   </MantineProvider>
 );
