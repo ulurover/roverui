@@ -102,7 +102,7 @@ export default function Header({ links, mode }: HeaderProps) {
   ));
 
   return (
-    <HeaderMantine height={60} mb={120}>
+    <HeaderMantine height={60}>
       <Container className={classes.header}>
         <Text>Ulurover UI</Text>
         <SegmentedControl
