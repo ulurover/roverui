@@ -109,30 +109,6 @@ export default function SerialProvider(props: { children: React.ReactNode }) {
     serial.onReceive = (value) => {
       recieveHandler(value);
       return;
-
-      if (value.slice(-1) !== "@") {
-        console.log("Un-complete data writted to temp buffer");
-        tempBuffer.current = value;
-      } else if (tempBuffer.current !== null && value.slice(-1) === "@") {
-        console.log("Complete data but temp buffer not empty");
-        setReceived({
-          timestamp: new Date(),
-          value: `${tempBuffer.current}${value}`,
-        });
-        tempBuffer.current = null;
-      } else if (tempBuffer.current !== null && value.slice(-1) !== "@") {
-        console.log(
-          "Un-complete data&&tempBuffer contains data writted to tempbuffer"
-        );
-        tempBuffer.current = `${tempBuffer.current}${value}`;
-      } else {
-        console.log("tempBuffer", tempBuffer.current);
-        console.log("Complete data");
-        setReceived({
-          timestamp: new Date(),
-          value: `${value}`,
-        });
-      }
     };
 
     serial.requestPort().then((res) => {
