@@ -17,11 +17,13 @@ export default function Serial() {
             <p>{true ? "Can use serial" : "Cannot use serial"}</p>
             <p>Port state: {connected ? "connected" : "not connected"}</p>
             <Stack align="stretch">
-              <Button onClick={connect}>Connect</Button>
-              <Button onClick={close}>Close Serial Connection</Button>
               <Group grow>
-                <Button color="green">readStart</Button>
-                <Button color="red">readStop</Button>
+                <Button onClick={connect} color="green">
+                  Connect port
+                </Button>
+                <Button onClick={close} color="red">
+                  Close port
+                </Button>
               </Group>
             </Stack>
           </Paper>
